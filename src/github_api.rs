@@ -40,12 +40,7 @@ pub struct GitHubAPISecret {
 impl GitHubAPI {
     pub fn new(url: Option<String>, token: Option<String>) -> GitHubAPI {
 
-        let github_url: Option<String>;
-        if url.is_none() {
-            github_url = Some("https://api.github.com".to_string());
-        } else {
-            github_url = url.clone();
-        }
+        let github_url = url.unwrap_or_else(|| "https://api.github.com".to_string());
 
         if token.is_none() {
             error!("GitHub API token is required");
@@ -53,7 +48,7 @@ impl GitHubAPI {
         }
 
         GitHubAPI {
-            url: github_url,
+            url: Some(github_url),
             token,
             client: Client::new(),
         }

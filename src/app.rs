@@ -21,7 +21,7 @@ impl App {
             let github_secrets = github_api.get_secrets(&repository).await?;
             for secret in  github_secrets.secrets.iter() {
 
-                let observer_result = observer.validate_secret(&secret).await?;
+                let observer_result = observer.validate_secret(secret).await?;
 
                 if observer_result.is_expired {
                     error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, observer_result.days_left);
