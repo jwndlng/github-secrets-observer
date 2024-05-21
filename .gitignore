@@ -24,3 +24,7 @@ Cargo.lock
 # already existing elements were commented out
 
 #/target
+
+# Custom file exclusions
+config.toml
+.envrc
