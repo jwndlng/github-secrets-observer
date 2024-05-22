@@ -1,9 +1,14 @@
+
 use anyhow::Error;
-use crate::config::ObserverSettings;
-use crate::github_api::GitHubAPISecret;
+use tracing::{info, error};
+
+use crate::github_api::{GitHubAPI, GitHubAPISecret};
+use crate::config::Configuration;
+
+
 
 pub struct Observer {
-    settings: ObserverSettings,
+    config: Configuration
 }
 
 pub struct ObserverResult {
@@ -12,10 +17,31 @@ pub struct ObserverResult {
 }
 
 impl Observer {
-    pub fn new(settings: ObserverSettings) -> Observer {
+    pub fn new(config: Configuration) -> Observer {
         Observer {
-            settings
+            config
         }
+    }
+
+    pub async fn run(&mut self) -> Result<(), Error> {
+        let github_api = GitHubAPI::new(None, self.config.github.token.clone());
+        let repositories = github_api.get_repositories(self.config.github.organization.as_str()).await?;
+
+        for repository in repositories {
+            let github_secrets = github_api.get_secrets(&repository).await?;
+            for secret in  github_secrets.secrets.iter() {
+
+                let observer_result = self.validate_secret(secret).await?;
+
+                if observer_result.is_expired {
+                    error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, observer_result.days_left);
+                } else {
+                    info!("Secret {} in repository {} is not expired", secret.name, &repository.full_name);
+                }
+
+            }
+        }
+        Ok(())
     }
 
     pub async fn validate_secret(&self, secret: &GitHubAPISecret) -> Result<ObserverResult, Error> {
@@ -24,7 +50,7 @@ impl Observer {
         let diff = now.signed_duration_since(secret.updated_at);
         
         let mut result = ObserverResult {
-            is_expired: diff.num_days() > self.settings.default_rotation,
+            is_expired: diff.num_days() > self.config.observer.default_rotation,
             days_left: diff.num_days(),
         };
 
@@ -38,7 +64,7 @@ impl Observer {
     }
 
     async fn is_ignored(&self, secret: &crate::github_api::GitHubAPISecret) -> Result<bool, Error> {
-        if let Some(ref ignore_secrets) = self.settings.ignore_secrets {
+        if let Some(ref ignore_secrets) = self.config.observer.ignore_secrets {
             Ok(ignore_secrets.iter().any(|s| s == &secret.name))
         } else {
             Ok(false)

@@ -1,13 +1,14 @@
-mod app;
+mod observer;
 mod config;
 mod github_api;
-mod observer;
+mod validator;
+mod notifier;
 
 use anyhow::{Context, Error};
 use tracing_subscriber::FmtSubscriber;
 use tracing::{info, error, Level};
 
-use app::App;
+use observer::Observer;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -21,14 +22,14 @@ async fn main() -> Result<(), Error> {
     info!("Loading settings.");
     let config = config::Configuration::new().context("Failed to load settings")?;
 
-    let mut app = App::new();
-    match app.run(&config).await {
+    let mut observer = Observer::new(config);
+    match observer.run().await {
         Ok(()) => {
-            info!("Application finished successfully.");
+            info!("Observer finished successfully.");
             Ok(())
         },
         Err(e) => {
-            error!("Application failed. Reason: {:?}", e);
+            error!("Observer failed. Reason: {:?}", e);
             panic!("Abort program.")
         }
     }
