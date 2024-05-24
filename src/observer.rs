@@ -30,8 +30,7 @@ impl Observer {
         for repository in repositories {
             let github_secrets = self.github_api.get_secrets(&repository).await?;
             for secret in  github_secrets.secrets.iter() {
-                let result = self.validator.validate_secret(&secret).await?;
-
+                let result = self.validator.validate_secret(secret).await?;
                 match result.state {
                     validator::ValidatorState::Expired => {
                         error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, result.days_overdue);
