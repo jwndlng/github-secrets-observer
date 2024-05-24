@@ -2,72 +2,49 @@
 use anyhow::Error;
 use tracing::{info, error};
 
-use crate::github_api::{GitHubAPI, GitHubAPISecret};
+use crate::github_api::GitHubAPI;
 use crate::config::Configuration;
+use crate::validator::{self, Validator};
 
 
 
 pub struct Observer {
-    config: Configuration
-}
-
-pub struct ObserverResult {
-    pub is_expired: bool,
-    pub days_left: i64,
+    config: Configuration,
+    validator: Validator,
+    github_api: GitHubAPI,
 }
 
 impl Observer {
     pub fn new(config: Configuration) -> Observer {
+        let validator = Validator::new(config.observer.clone());
+        let github_api = GitHubAPI::new(None, config.github.token.clone());
         Observer {
-            config
+            config,
+            validator,
+            github_api
         }
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
-        let github_api = GitHubAPI::new(None, self.config.github.token.clone());
-        let repositories = github_api.get_repositories(self.config.github.organization.as_str()).await?;
-
+        let repositories = self.github_api.get_repositories(self.config.github.organization.as_str()).await?;
         for repository in repositories {
-            let github_secrets = github_api.get_secrets(&repository).await?;
+            let github_secrets = self.github_api.get_secrets(&repository).await?;
             for secret in  github_secrets.secrets.iter() {
+                let result = self.validator.validate_secret(&secret).await?;
 
-                let observer_result = self.validate_secret(secret).await?;
-
-                if observer_result.is_expired {
-                    error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, observer_result.days_left);
-                } else {
-                    info!("Secret {} in repository {} is not expired", secret.name, &repository.full_name);
+                match result.state {
+                    validator::ValidatorState::Expired => {
+                        error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, result.days_overdue);
+                    },
+                    validator::ValidatorState::NotExpired => {
+                        info!("Secret {} in repository {} is not expired", secret.name, &repository.full_name);
+                    },
+                    validator::ValidatorState::Ignored => {
+                        info!("Secret {} in repository {} is ignored", secret.name, &repository.full_name);
+                    }
                 }
-
             }
         }
         Ok(())
-    }
-
-    pub async fn validate_secret(&self, secret: &GitHubAPISecret) -> Result<ObserverResult, Error> {
-
-        let now = chrono::Utc::now();
-        let diff = now.signed_duration_since(secret.updated_at);
-        
-        let mut result = ObserverResult {
-            is_expired: diff.num_days() > self.config.observer.default_rotation,
-            days_left: diff.num_days(),
-        };
-
-        if self.is_ignored(secret).await? {
-            result.days_left = 0;
-            result.is_expired = false;
-        }
-
-        Ok(result)
-
-    }
-
-    async fn is_ignored(&self, secret: &crate::github_api::GitHubAPISecret) -> Result<bool, Error> {
-        if let Some(ref ignore_secrets) = self.config.observer.ignore_secrets {
-            Ok(ignore_secrets.iter().any(|s| s == &secret.name))
-        } else {
-            Ok(false)
-        }
     }
 }

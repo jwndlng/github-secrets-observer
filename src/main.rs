@@ -2,7 +2,7 @@ mod observer;
 mod config;
 mod github_api;
 mod validator;
-mod notifier;
+// mod notifier;
 
 use anyhow::{Context, Error};
 use tracing_subscriber::FmtSubscriber;

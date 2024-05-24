@@ -4,14 +4,14 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
-pub struct GitHubSettings {
+pub struct GitHubConfig {
     pub organization: String,
     pub token: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
-pub struct ObserverSettings {
+pub struct ObserverConfig {
     /// Default rotation in days when to notify
     pub default_rotation: i64,
     /// Prefix to ignore secrets
@@ -22,8 +22,8 @@ pub struct ObserverSettings {
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
 pub struct Configuration {
-    pub github: GitHubSettings,
-    pub observer: ObserverSettings,
+    pub github: GitHubConfig,
+    pub observer: ObserverConfig,
 }
 
 impl Configuration {
