@@ -23,8 +23,13 @@ The following table lists all of the options to configure the application
 | default_rotation             | observer             | No           | Default rotation in days for tokens that don't use the suffix. E.g. use `_R10` for 10 days.  |
 | ignore_pattern               | observer             | No           | Regex pattern that allows to ignore secrets from the scan that match the regex.              |
 | ignore_secrets               | observer             | No           | List of secrets that will be ignored.                                                        |
+| disable_secret_logging       | notifier             | No           | Disable secret logging in stdout to avoid data leakage.                                      |
+| github_annotation            | notifier             | No           | (future) Use GitHub annotations for GitHub Workflows.                                        |
+| slack_webhook                | notifier             | No           | (future) Use Slack Webhook for notifications. Enable by setting an URL.                      |
 
 Each option can be either configured via the `config.toml` file or environment variables. Both can be used for different options.
+
+ℹ️ **Info:** CLI arguments will override the settings.
 
 #### Using the configuration file
 The configuration file uses the TOML format. The current configuration does not use a nested pattern. So each section contains the options listed above. 
