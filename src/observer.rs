@@ -17,7 +17,7 @@ pub struct Observer {
 impl Observer {
     pub fn new(config: Configuration) -> Observer {
         let validator = Validator::new(config.observer.clone());
-        let github_api = GitHubAPI::new(None, config.github.token.clone());
+        let github_api = GitHubAPI::new(None, Some(config.github.token.clone()));
         Observer {
             config,
             validator,
@@ -26,11 +26,22 @@ impl Observer {
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
-        let repositories = self.github_api.get_repositories(self.config.github.organization.as_str()).await?;
+        if self.config.github.organization.is_none() {
+            error!("No organization provided. Please provide an organization via CLI, environment or config file.");
+            return Err(anyhow::anyhow!("No organization provided."));
+        }
+
+        let repositories = self.github_api.get_repositories(
+            self.config.github.organization.clone().unwrap().as_str()
+        ).await?;
         for repository in repositories {
             let github_secrets = self.github_api.get_secrets(&repository).await?;
             for secret in  github_secrets.secrets.iter() {
                 let result = self.validator.validate_secret(secret).await?;
+                // The following notification will be replaced by the notifier component
+                if self.config.notifier.disable_secret_logging {
+                    continue;
+                }
                 match result.state {
                     validator::ValidatorState::Expired => {
                         error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, result.days_overdue);

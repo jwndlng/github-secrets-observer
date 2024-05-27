@@ -86,3 +86,28 @@ impl GitHubAPI {
         Ok(response.json::<GitHubAPISecrets>().await?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_url() {
+        let github_api = GitHubAPI::new(
+            Some("https://api.github.com".to_string()),
+            Some("token".to_string())
+        );
+        assert_eq!(github_api.get_url("/path"), "https://api.github.com/path");
+        assert_eq!(github_api.get_url("/a/very/long/path"), "https://api.github.com/a/very/long/path");
+    }
+
+    #[tokio::test]
+    async fn test_request_error() {
+        let github_api = GitHubAPI::new(
+            Some("https://api.github.com".to_string()),
+            Some("token".to_string())
+        );
+        let response = github_api.request("/403").await;
+        assert!(response.is_err());
+    }
+}
