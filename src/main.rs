@@ -9,14 +9,17 @@ use anyhow::{Context, Error};
 use clap::Parser;
 use cli::Cli;
 use tracing_subscriber::FmtSubscriber;
-use tracing::{info, error, Level};
+use tracing::{info, error};
 
 use observer::Observer;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+
+    let cli = Cli::parse();
+
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO) // TODO: make this configurable via CLI --log-level
+        .with_max_level(cli.log_level)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber)
@@ -25,7 +28,6 @@ async fn main() -> Result<(), Error> {
     info!("Loading settings.");
     let mut config = config::Configuration::new().context("Failed to load settings")?;
 
-    let cli = Cli::parse();
     // Override settings with CLI params
     if cli.disable_secret_logging {
         config.notifier.disable_secret_logging = true;
