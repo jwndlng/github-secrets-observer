@@ -1,0 +1,14 @@
+[github]
+organization = "my_org"
+
+[observer]
+default_rotation = 180
+ignore_pattern = r"IGNORE\d+_"
+ignore_secrets = [
+    "MY_SECRET_1"
+]
+
+[notification]
+disable_secret_logging = false
+github_annotation = true
+slack_webhook = "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX"

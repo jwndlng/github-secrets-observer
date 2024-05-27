@@ -1,22 +1,27 @@
-
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
 pub struct GitHubConfig {
-    pub organization: String,
-    pub token: Option<String>,
+    pub organization: Option<String>,
+    pub token: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
 pub struct ObserverConfig {
-    /// Default rotation in days when to notify
     pub default_rotation: i64,
-    /// Prefix to ignore secrets
     pub ignore_pattern: Option<String>,
     pub ignore_secrets: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(unused)]
+pub struct NotifierConfig {
+    pub disable_secret_logging: bool,
+    pub github_annotation: Option<bool>,
+    pub slack_webhook: Option<String>
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -24,6 +29,7 @@ pub struct ObserverConfig {
 pub struct Configuration {
     pub github: GitHubConfig,
     pub observer: ObserverConfig,
+    pub notifier: NotifierConfig,
 }
 
 impl Configuration {
@@ -35,6 +41,8 @@ impl Configuration {
                 .separator("_")
                 .try_parsing(true)
             )
+            .set_default("observer.default_rotation", 90)?
+            .set_default("notifier.disable_secret_logging", false)?
             .build()?;
         config.try_deserialize()
     }
