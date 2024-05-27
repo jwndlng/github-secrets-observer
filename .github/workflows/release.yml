@@ -1,0 +1,28 @@
+name: Release a new version
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update rust toolchain
+        run: |
+          rustup update
+      - name: Build
+        run: |
+          cargo build --release
+      - name: Publish release
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
+        with:
+          name: ${{ github.ref_name }}
+          files: |
+            target/release/github-secrets-observer
+          token: ${{ secrets.GITHUB_TOKEN }}
