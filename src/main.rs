@@ -3,7 +3,7 @@ mod cli;
 mod config;
 mod github_api;
 mod validator;
-// mod notifier;
+mod notifier;
 
 use anyhow::{Context, Error};
 use clap::Parser;
@@ -12,6 +12,7 @@ use tracing_subscriber::FmtSubscriber;
 use tracing::{info, error};
 
 use observer::Observer;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -29,14 +30,26 @@ async fn main() -> Result<(), Error> {
     let mut config = config::Configuration::new().context("Failed to load settings")?;
 
     // Override settings with CLI params
-    if cli.disable_secret_logging {
-        config.notifier.disable_secret_logging = true;
-    }
     if cli.organization.is_some() {
         config.github.organization = cli.organization;
     }
+    if let Some (notifier_type) = cli.notifier_type {
+        config.notifier.notifier_type = notifier_type;
+    }
 
-    let mut observer = Observer::new(config);
+    let observer = Observer::new(config).await;
+
+    let mut observer = match observer {
+        Ok(observer) => {
+            info!("Observer initialized successfully.");
+            observer
+        },
+        Err(e) => {
+            error!("Observer failed to initialize. Reason: {:?}", e);
+            panic!("Abort program.")
+        }
+    };
+
     match observer.run().await {
         Ok(()) => {
             info!("Observer finished successfully.");

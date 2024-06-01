@@ -1,28 +1,30 @@
-
 use anyhow::Error;
-use tracing::{info, error};
+use tracing::error;
 
 use crate::github_api::GitHubAPI;
 use crate::config::Configuration;
-use crate::validator::{self, Validator};
-
+use crate::validator::Validator;
+use crate::notifier::Notifier;
 
 
 pub struct Observer {
     config: Configuration,
     validator: Validator,
+    notifier: Notifier,
     github_api: GitHubAPI,
 }
 
 impl Observer {
-    pub fn new(config: Configuration) -> Observer {
+    pub async fn new(config: Configuration) -> Result<Observer, Error> {
         let validator = Validator::new(config.observer.clone());
+        let notifier = Notifier::new(config.notifier.clone()).await?;
         let github_api = GitHubAPI::new(None, Some(config.github.token.clone()));
-        Observer {
+        Ok(Observer {
             config,
             validator,
+            notifier,
             github_api
-        }
+        })
     }
 
     pub async fn run(&mut self) -> Result<(), Error> {
@@ -37,22 +39,8 @@ impl Observer {
         for repository in repositories {
             let github_secrets = self.github_api.get_secrets(&repository).await?;
             for secret in  github_secrets.secrets.iter() {
-                let result = self.validator.validate_secret(secret).await?;
-                // The following notification will be replaced by the notifier component
-                if self.config.notifier.disable_secret_logging {
-                    continue;
-                }
-                match result.state {
-                    validator::ValidatorState::Expired => {
-                        error!("Secret {} in repository {} is expired since {} days", secret.name, &repository.full_name, result.days_overdue);
-                    },
-                    validator::ValidatorState::NotExpired => {
-                        info!("Secret {} in repository {} is not expired", secret.name, &repository.full_name);
-                    },
-                    validator::ValidatorState::Ignored => {
-                        info!("Secret {} in repository {} is ignored", secret.name, &repository.full_name);
-                    }
-                }
+                let validator_result = self.validator.validate_secret(secret).await?;
+                self.notifier.notify(&validator_result, secret, &repository).await;
             }
         }
         Ok(())
