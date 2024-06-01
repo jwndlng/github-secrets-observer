@@ -2,7 +2,8 @@
 organization = "my_org"
 
 [observer]
-default_rotation = 180
+default_rotation_days = 180
+expiration_notice_days = 14
 ignore_pattern = r"IGNORE\d+_"
 ignore_secrets = [
     "MY_SECRET_1"

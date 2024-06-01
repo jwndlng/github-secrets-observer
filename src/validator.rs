@@ -11,11 +11,13 @@ pub struct Validator {
 pub enum ValidatorState {
     Expired,
     NotExpired,
+    ExpiresSoon,
     Ignored,
 }
 
 pub struct ValidatorResult {
     pub state: ValidatorState,
+    pub days_age: i64,
     pub days_left: i64,
     pub days_overdue: i64,
 }
@@ -32,9 +34,15 @@ impl Validator {
         
         let mut result = ValidatorResult {
             state: ValidatorState::NotExpired,
+            days_age: i64::default(),
             days_left: i64::default(),
             days_overdue: i64::default(),
         };
+
+        // Calculate the difference between the current date and the last update of the secret
+        let now = chrono::Utc::now();
+        let diff = now.signed_duration_since(secret.updated_at);
+        result.days_age = diff.num_days();
 
         if self.is_ignored(secret).await? || self.is_ignored_by_pattern(secret).await? {
             // return ignored result
@@ -42,7 +50,7 @@ impl Validator {
             return Ok(result);
         }
 
-        let mut retention_days = self.config.default_rotation;
+        let mut retention_days = self.config.default_rotation_days;
 
         // Check if custom retention time is set per secret
         let re = Regex::new(r"^[A-Z0-9\_]+\_R(\d{1,4})$").unwrap();
@@ -52,15 +60,14 @@ impl Validator {
             retention_days = retention.get(1).unwrap().as_str().parse::<i64>().unwrap();
         }
 
-        // Calculate the difference between the current date and the last update of the secret
-        let now = chrono::Utc::now();
-        let diff = now.signed_duration_since(secret.updated_at);
-        
         if diff.num_days() >= retention_days {
             result.state = ValidatorState::Expired;
             result.days_overdue = diff.num_days() - retention_days;
         } else {
             result.days_left = retention_days - diff.num_days();
+            if result.days_left <= self.config.expiration_notice_days {
+                result.state = ValidatorState::ExpiresSoon;
+            }
         }
         Ok(result)
     }
@@ -94,7 +101,8 @@ mod tests {
     #[tokio::test]
     async fn test_secret_expired() {
         let config = ObserverConfig {
-            default_rotation: 90,
+            default_rotation_days: 90,
+            expiration_notice_days: 5,
             ignore_secrets: None,
             ignore_pattern: None,
         };
@@ -113,7 +121,8 @@ mod tests {
     #[tokio::test]
     async fn test_secret_expired_with_custom_rotation() {
         let config = ObserverConfig {
-            default_rotation: 90,
+            default_rotation_days: 90,
+            expiration_notice_days: 5,
             ignore_secrets: None,
             ignore_pattern: None,
         };
@@ -132,7 +141,8 @@ mod tests {
     #[tokio::test]
     async fn test_secret_not_expired() {
         let config = ObserverConfig {
-            default_rotation: 90,
+            default_rotation_days: 90,
+            expiration_notice_days: 1,
             ignore_secrets: None,
             ignore_pattern: None,
         };
@@ -151,7 +161,8 @@ mod tests {
     #[tokio::test]
     async fn test_secret_not_expired_with_custom_rotation() {
         let config = ObserverConfig {
-            default_rotation: 90,
+            default_rotation_days: 90,
+            expiration_notice_days: 5,
             ignore_secrets: None,
             ignore_pattern: None,
         };
@@ -168,9 +179,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_secret_expires_soon() {
+        let config = ObserverConfig {
+            default_rotation_days: 90,
+            expiration_notice_days: 60,
+            ignore_secrets: None,
+            ignore_pattern: None,
+        };
+        let validator = Validator::new(config);
+        let secret = GitHubAPISecret {
+            name: String::from("TEST_SECRET"),
+            created_at: Utc::now() - Duration::days(90),
+            updated_at: Utc::now() - Duration::days(85),
+        };
+
+        let result = validator.validate_secret(&secret).await.unwrap();
+        assert_eq!(result.state, ValidatorState::ExpiresSoon);
+        assert_eq!(result.days_left, 5);
+    }
+
+    #[tokio::test]
+    async fn test_secret_expires_soon_with_custom_rotation() {
+        let config = ObserverConfig {
+            default_rotation_days: 90,
+            expiration_notice_days: 60,
+            ignore_secrets: None,
+            ignore_pattern: None,
+        };
+        let validator = Validator::new(config);
+        let secret = GitHubAPISecret {
+            name: String::from("TEST_SECRET_R100"),
+            created_at: Utc::now() - Duration::days(100),
+            updated_at: Utc::now() - Duration::days(90),
+        };
+
+        let result = validator.validate_secret(&secret).await.unwrap();
+        assert_eq!(result.state, ValidatorState::ExpiresSoon);
+        assert_eq!(result.days_left, 10);
+    }
+
+    #[tokio::test]
     async fn test_secret_ignored() {
         let config = ObserverConfig {
-            default_rotation: 90,
+            default_rotation_days: 90,
+            expiration_notice_days: 5,
             ignore_secrets: Some(vec![String::from("TEST_SECRET")]),
             ignore_pattern: None,
         };
@@ -188,7 +240,8 @@ mod tests {
     #[tokio::test]
     async fn test_secret_ignore_pattern() {
         let config = ObserverConfig {
-            default_rotation: 90,
+            default_rotation_days: 90,
+            expiration_notice_days: 5,
             ignore_secrets: None,
             ignore_pattern: Some(r"^TEST_".to_string()),
         };
