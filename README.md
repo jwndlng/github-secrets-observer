@@ -22,21 +22,30 @@ Options:
   -h, --help                           Print help
 ```
 
+### Example Output
+
+```bash
+2024-06-....  INFO github_secrets_observer: Loading settings.
+2024-06-....  INFO github_secrets_observer: Observer initialized successfully.
+2024-06-....  INFO github_secrets_observer::notifier: 🤷 [state=Ignored, name=SECRET1, repository=my_org/my_repo, days_age=101, days_left=0, days_overdue=0] Secret is ignored.
+2024-06-.... ERROR github_secrets_observer::notifier: ❌ [state=Expired, name=SECRET2, repository=my_org/my_repo, days_age=170, days_left=0, days_overdue=80] Secret is expired.
+2024-06-....  INFO github_secrets_observer: Observer finished successfully.
+```
+
 ### Configuration
 
 The following table lists all of the options to configure the application
 
-| Name                         | Section              | Required     | Note                                                                                         |
-| ---------------------------- | -------------------- | ------------ | -------------------------------------------------------------------------------------------- |
-| organization                 | github               | Yes          | The GitHub organization that will be audited.                                                |
-| token                        | github               | Yes          | The GitHub access token. Don't use the configuration file and use environments instead.      |
-| default_rotation_days        | observer             | No           | Default rotation in days for tokens that don't use the suffix. E.g. use `_R10` for 10 days.  |
-| expiration_notice_days       | observer             | No           | Default notice days, when a secret is considered to expire soon.                             |         
-| ignore_pattern               | observer             | No           | Regex pattern that allows to ignore secrets from the scan that match the regex.              |
-| ignore_secrets               | observer             | No           | List of secrets that will be ignored.                                                        |
-| disable_secret_logging       | notifier             | No           | Disable secret logging in stdout to avoid data leakage.                                      |
-| github_annotation            | notifier             | No           | (future) Use GitHub annotations for GitHub Workflows.                                        |
-| slack_webhook                | notifier             | No           | (future) Use Slack Webhook for notifications. Enable by setting an URL.                      |
+| Name                         | Section   | Required | Default    | Note                                                                                         |
+| ---------------------------- | --------- | -------- | ---------- | -------------------------------------------------------------------------------------------- |
+| organization                 | github    | Yes      | -          | The GitHub organization that will be audited.                                                |
+| token                        | github    | Yes      | -          | The GitHub access token. Don't use the configuration file and use environments instead.      |
+| default_rotation_days        | observer  | No       | 90         | Default rotation in days for tokens that don't use the suffix. E.g. use `_R10` for 10 days.  |
+| expiration_notice_days       | observer  | No       | 14         | Default notice days, when a secret is considered to expire soon.                             |         
+| ignore_pattern               | observer  | No       | -          | Regex pattern that allows to ignore secrets from the scan that match the regex.              |
+| ignore_secrets               | observer  | No       | -          | List of secrets that will be ignored.                                                        |
+| notifier_type                | notifier  | No       | log        | Method that is used to notify about secrets.                                                 |
+| slack_webhook                | notifier  | No       | -          | Use Slack Webhook for notifications. Enable by setting an URL.                               |
 
 Each option can be either configured via the `config.toml` file or environment variables. Both can be used for different options.
 
