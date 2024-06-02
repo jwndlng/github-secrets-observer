@@ -21,7 +21,6 @@ pub struct ObserverConfig {
 #[allow(unused)]
 pub struct NotifierConfig {
     pub notifier_type: NotifierType,
-    pub github_annotation: Option<bool>,
     pub slack_webhook: Option<String>
 }
 
@@ -55,7 +54,6 @@ impl Configuration {
             )
             .set_default("observer.default_rotation_days", 90)?
             .set_default("observer.expiration_notice_days", 14)?
-            .set_default("notifier.disable_secret_logging", false)?
             .set_default("notifier.notifier_type", "log")?
             .build()?;
         config.try_deserialize()

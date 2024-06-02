@@ -1,10 +1,11 @@
 [package]
 name = "github-secrets-observer"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.83"
+async-trait = "0.1.76"
 clap = { version = "4", features = ["derive"] }
 config = "0.14.0"
 chrono = { version = "0.4", features = ["serde"] }
