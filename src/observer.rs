@@ -40,7 +40,7 @@ impl Observer {
             let github_secrets = self.github_api.get_secrets(&repository).await?;
             for secret in  github_secrets.secrets.iter() {
                 let validator_result = self.validator.validate_secret(secret).await?;
-                self.notifier.notify(&validator_result, secret, &repository).await;
+                self.notifier.notify(&validator_result, secret, &repository).await?;
             }
         }
         Ok(())
