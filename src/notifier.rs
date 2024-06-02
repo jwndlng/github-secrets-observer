@@ -131,7 +131,7 @@ pub struct SlackNotifier  {
 impl SlackNotifier {
     pub fn new(webhook_url: String) -> Self {
         SlackNotifier {
-            webhook_url: webhook_url
+            webhook_url
         }
     }
 
