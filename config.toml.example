@@ -10,6 +10,5 @@ ignore_secrets = [
 ]
 
 [notification]
-disable_secret_logging = false
 github_annotation = true
 slack_webhook = "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX"
